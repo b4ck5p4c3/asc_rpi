@@ -1,0 +1,10 @@
+[Unit]
+Description=Morgotron
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python /home/pi/usb2all.py
+User=pi
+
+[Install]
+WantedBy=multi-user.target
