@@ -3,7 +3,7 @@ Description=Morgotron
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python /home/pi/usb2all.py
+ExecStart=/usr/bin/python -u /home/pi/usb2all.py
 User=pi
 
 [Install]
