@@ -7,7 +7,8 @@ minimalmodbus.BAUDRATE = 9600
 minimalmodbus.TIMEOUT = 10
 minimalmodbus.PARITY = 'N'
 
-slave_address = 10
+# slave_address = 10
+slave_address = 1
 
 MODBUS_READ_INPUT = 0x4
 
@@ -23,9 +24,10 @@ REG_INPUT_GAS_H   = 7
 REG_INPUT_SIZE = 8
 
 mb = minimalmodbus.Instrument('/dev/ttyS0', slave_address, mode='rtu', debug = False)
-mb.serial.baudrate = 9600
+mb.serial.baudrate = 115200
 mb.serial.timeout = 55
 mb.handle_local_echo = True
+
 if not mb.serial.is_open:
   mb.serial.open()
 
@@ -73,26 +75,115 @@ def test_inputs():
     
     time.sleep(0.25)
 
-# test_inputs()
-test_outputs()
-'''
+blue = 8
+white = 9
+red = 10
+green = 11
+yellow = 12
+led1 = 14
+led2 = 15
+on  = 1
+off = 0
+
+def random_flashing(delay):
+  mb.write_bit(blue,random.getrandbits(1), functioncode=0x05)
+  time.sleep(delay)
+  mb.write_bit(white,random.getrandbits(1), functioncode=0x05)
+  time.sleep(delay)
+  mb.write_bit(red,random.getrandbits(1), functioncode=0x05)
+  time.sleep(delay)
+  mb.write_bit(green,random.getrandbits(1), functioncode=0x05)
+  time.sleep(delay)
+  mb.write_bit(yellow,random.getrandbits(1), functioncode=0x05)
+  time.sleep(delay)
+
+DOOR_3 = 15
+pin_modes = [1] * 16
+pin_modes[DOOR_3] = 0
+door_state = False
+pins = [1] * 16
+
+def pauk_init():
+  mb.write_bit(0,1, functioncode=0x05)
+  mb.write_bit(1,1, functioncode=0x05)
+  mb.write_bit(2,1, functioncode=0x05)
+  mb.write_bit(3,1, functioncode=0x05)
+  mb.write_bit(4,1, functioncode=0x05)
+  mb.write_bit(5,0, functioncode=0x05)
+  mb.write_bit(6,1, functioncode=0x05)
+  mb.write_bit(7,1, functioncode=0x05)
+
+def intro_init():
+  mb.write_bits(MODE_BASE, pin_modes)
+  mb.write_bits(PULL_BASE, [1 - x for x in pin_modes])
+
+def intro_poll():
+  for i in xrange(16):
+    pins[i] ^= 1
+
+    pin_modes[DOOR_3] = 0
+
+    mb.write_bits(WRITE_BASE, pins)
+
+    # time.sleep(0.01)
+
+    en = mb.read_bits(READ_EN_BASE, 16, functioncode=0x02)
+
+    print "door:", en[DOOR_3]
+
+    if en[DOOR_3] and (not door_state):
+      door_state = True
+      print "door open"
+    
+    if not en[DOOR_3] and door_state:
+      door_state = False
+      print "door closed"
+
+mb.slave_address = 10
+#intro_init()
+mb.slave_address = 1
+# pauk_init()
+
 while(1):
-  data = mb.read_registers(REG_INPUT_START, REG_INPUT_SIZE, functioncode=MODBUS_READ_INPUT)
+  mb.slave_address = 1
+  random_flashing(0.01)
 
-  raw_temp = (data[REG_INPUT_TEMP_H] << 16) | data[REG_INPUT_TEMP_L]
-  raw_humi = (data[REG_INPUT_HUMI_H] << 16) | data[REG_INPUT_HUMI_L]
-  raw_pres = (data[REG_INPUT_PRES_H] << 16) | data[REG_INPUT_PRES_L]
-  raw_gas  = (data[REG_INPUT_GAS_H]  << 16) | data[REG_INPUT_GAS_L]
+  mb.slave_address = 10
+  #intro_poll()
 
-  temp = raw_temp / 100.0
-  humi = raw_humi / 1000.0
-  pres = raw_pres / 100.0
-  gas = raw_gas
 
-  #print('T: {0}, P: {1}, H: {2}, G: {3}'.format(raw_temp, raw_pres, raw_humi, raw_gas))
-  print('T: {0} degC, P: {1} hPa, H: {2} %%rH, G: {3} ohms'.format(temp, pres, humi, gas))
-
-  time.sleep(0.08)
 '''
+# test_inputs()
+# test_outputs()
 
+
+
+
+
+
+
+
+
+
+
+while(1):
+  for i in xrange(16):
+    pins[i] ^= 1
+
+    pin_modes[DOOR_3] = 0
+
+    mb.write_bits(WRITE_BASE, pins)
+
+    # time.sleep(0.01)
+
+    en = mb.read_bits(READ_EN_BASE, 16, functioncode=0x02)
+
+    if en[DOOR_3] and (not door_state):
+      door_state = True
+      print "door open"
+    
+    if not en[DOOR_3] and door_state:
+      door_state = False
+      print "door closed"
+'''
 
