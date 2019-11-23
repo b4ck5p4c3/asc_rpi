@@ -133,7 +133,7 @@ def safe_writes(mb, address, data):
       if i > 0:
         print "retry write", i
       mb.write_bits(address, data)
-      time.sleep(0.05)
+      time.sleep(0.1)
       return
     except Exception:
       print "except"
@@ -147,7 +147,7 @@ def safe_reads(mb, address, size):
       if i > 0:
         print "retry read", i
       return mb.read_bits(address, size, functioncode=0x02)
-      time.sleep(0.05)
+      time.sleep(0.1)
     except Exception:
       print "except"
       time.sleep(RETRY_TIMEOUT)
@@ -184,12 +184,10 @@ def intro_poll():
     if en[DOOR_3] and (not door_state_3):
       door_state_3 = True
       print "door open"
-      safe_writes(mb, RELAY_2, [1])
     
     if not en[DOOR_3] and door_state_3:
       door_state_3 = False
       print "door closed"
-      safe_writes(mb, RELAY_2, [0])
 
     if en[DOOR_2] and (not door_state_2):
       door_state_2 = True
@@ -202,6 +200,11 @@ def intro_poll():
       print "door closed"
       safe_writes(mb, RELAY_1, [0])
       pins[DOOR_KEY] = 0
+
+    if (not door_state_2) and (not door_state_3):
+      safe_writes(mb, RELAY_2, [0])
+    else:
+      safe_writes(mb, RELAY_2, [1])
 
     safe_writes(mb, WRITE_BASE, pins)
 
