@@ -102,9 +102,15 @@ def random_flashing(delay):
   time.sleep(delay)
 
 DOOR_3 = 15
+DOOR_2 = 14
+
+DOOR_KEY = 0
+
 pin_modes = [1] * 16
+pin_modes[DOOR_2] = 0
 pin_modes[DOOR_3] = 0
-door_state = False
+door_state_3 = False
+door_state_2 = False
 pins = [1] * 16
 
 def pauk_init():
@@ -160,30 +166,44 @@ RELAY_TIMEOUT = 5
 light = 0
 
 def intro_poll():
-  global door_state
+  global door_state_3
+  global door_state_2
   global relay_time
   global light
 
   for i in xrange(16):
-    pins[i] ^= 1
+    if i != DOOR_KEY:
+      pins[i] ^= 1
 
     pin_modes[DOOR_3] = 0
-
-    safe_writes(mb, WRITE_BASE, pins)
 
     en = safe_reads(mb, READ_EN_BASE, 16)
 
     # print "door:", en[DOOR_3]
 
-    if en[DOOR_3] and (not door_state):
-      door_state = True
+    if en[DOOR_3] and (not door_state_3):
+      door_state_3 = True
       print "door open"
       safe_writes(mb, RELAY_2, [1])
     
-    if not en[DOOR_3] and door_state:
-      door_state = False
+    if not en[DOOR_3] and door_state_3:
+      door_state_3 = False
       print "door closed"
       safe_writes(mb, RELAY_2, [0])
+
+    if en[DOOR_2] and (not door_state_2):
+      door_state_2 = True
+      print "door open"
+      safe_writes(mb, RELAY_1, [1])
+      pins[DOOR_KEY] = 1
+    
+    if not en[DOOR_2] and door_state_2:
+      door_state_2 = False
+      print "door closed"
+      safe_writes(mb, RELAY_1, [0])
+      pins[DOOR_KEY] = 0
+
+    safe_writes(mb, WRITE_BASE, pins)
 
     '''
     if time.time() - relay_time > RELAY_TIMEOUT:
@@ -237,12 +257,12 @@ while(1):
 
     en = mb.read_bits(READ_EN_BASE, 16, functioncode=0x02)
 
-    if en[DOOR_3] and (not door_state):
-      door_state = True
+    if en[DOOR_3] and (not door_state_3):
+      door_state_3 = True
       print "door open"
     
-    if not en[DOOR_3] and door_state:
-      door_state = False
+    if not en[DOOR_3] and door_state_3:
+      door_state_3 = False
       print "door closed"
 '''
 
