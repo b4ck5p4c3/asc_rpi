@@ -37,6 +37,10 @@ MODE_BASE = 0
 WRITE_BASE = MODE_BASE + GPIO_SIZE
 PULL_BASE = WRITE_BASE + GPIO_SIZE
 
+RELAY_1 = GPIO_SIZE * 3 + 0
+RELAY_2 = GPIO_SIZE * 3 + 1
+RELAY_3 = GPIO_SIZE * 3 + 2
+
 READ_EN_BASE = 0x100
 READ_DIS_BASE = READ_EN_BASE + GPIO_SIZE
 
@@ -115,7 +119,7 @@ def pauk_init():
 
 
 RETRIES = 5
-RETRY_TIMEOUT = 0.2
+RETRY_TIMEOUT = 0.05
 
 def safe_writes(mb, address, data):
   for i in xrange(RETRIES):
@@ -123,6 +127,7 @@ def safe_writes(mb, address, data):
       if i > 0:
         print "retry write", i
       mb.write_bits(address, data)
+      time.sleep(0.05)
       return
     except Exception:
       print "except"
@@ -136,6 +141,7 @@ def safe_reads(mb, address, size):
       if i > 0:
         print "retry read", i
       return mb.read_bits(address, size, functioncode=0x02)
+      time.sleep(0.05)
     except Exception:
       print "except"
       time.sleep(RETRY_TIMEOUT)
@@ -145,10 +151,18 @@ def safe_reads(mb, address, size):
 
 def intro_init():
   safe_writes(mb, MODE_BASE, pin_modes)
+  time.sleep(0.1)
   safe_writes(mb, PULL_BASE, [1 - x for x in pin_modes])
+
+relay_time = time.time()
+RELAY_TIMEOUT = 5
+
+light = 0
 
 def intro_poll():
   global door_state
+  global relay_time
+  global light
 
   for i in xrange(16):
     pins[i] ^= 1
@@ -164,10 +178,23 @@ def intro_poll():
     if en[DOOR_3] and (not door_state):
       door_state = True
       print "door open"
+      safe_writes(mb, RELAY_2, [1])
     
     if not en[DOOR_3] and door_state:
       door_state = False
       print "door closed"
+      safe_writes(mb, RELAY_2, [0])
+
+    '''
+    if time.time() - relay_time > RELAY_TIMEOUT:
+      relay_time = time.time()
+
+      print "set light", light
+
+      safe_writes(mb, RELAY_2, [light])
+
+      light = 1 - light
+    '''
 
     time.sleep(0.05)
 
