@@ -3,12 +3,12 @@ import serial.tools.list_ports
 import time
 import random
 
-minimalmodbus.BAUDRATE = 9600
+# minimalmodbus.BAUDRATE = 9600
 minimalmodbus.TIMEOUT = 10
 minimalmodbus.PARITY = 'N'
 
-# slave_address = 10
-slave_address = 1
+slave_address = 11
+# slave_address = 1
 
 MODBUS_READ_INPUT = 0x4
 
@@ -25,7 +25,7 @@ REG_INPUT_SIZE = 8
 
 mb = minimalmodbus.Instrument('/dev/ttyS0', slave_address, mode='rtu', debug = False)
 mb.serial.baudrate = 115200
-mb.serial.timeout = 55
+mb.serial.timeout = 0.5
 mb.handle_local_echo = True
 
 if not mb.serial.is_open:
@@ -113,23 +113,53 @@ def pauk_init():
   mb.write_bit(6,1, functioncode=0x05)
   mb.write_bit(7,1, functioncode=0x05)
 
+
+RETRIES = 5
+RETRY_TIMEOUT = 0.2
+
+def safe_writes(mb, address, data):
+  for i in xrange(RETRIES):
+    try:
+      if i > 0:
+        print "retry write", i
+      mb.write_bits(address, data)
+      return
+    except Exception:
+      print "except"
+      time.sleep(RETRY_TIMEOUT)
+
+  print "modbus TIMEOUT"
+
+def safe_reads(mb, address, size):
+  for i in xrange(RETRIES):
+    try:
+      if i > 0:
+        print "retry read", i
+      return mb.read_bits(address, size, functioncode=0x02)
+    except Exception:
+      print "except"
+      time.sleep(RETRY_TIMEOUT)
+
+  print "modbus TIMEOUT"
+
+
 def intro_init():
-  mb.write_bits(MODE_BASE, pin_modes)
-  mb.write_bits(PULL_BASE, [1 - x for x in pin_modes])
+  safe_writes(mb, MODE_BASE, pin_modes)
+  safe_writes(mb, PULL_BASE, [1 - x for x in pin_modes])
 
 def intro_poll():
+  global door_state
+
   for i in xrange(16):
     pins[i] ^= 1
 
     pin_modes[DOOR_3] = 0
 
-    mb.write_bits(WRITE_BASE, pins)
+    safe_writes(mb, WRITE_BASE, pins)
 
-    # time.sleep(0.01)
+    en = safe_reads(mb, READ_EN_BASE, 16)
 
-    en = mb.read_bits(READ_EN_BASE, 16, functioncode=0x02)
-
-    print "door:", en[DOOR_3]
+    # print "door:", en[DOOR_3]
 
     if en[DOOR_3] and (not door_state):
       door_state = True
@@ -139,17 +169,19 @@ def intro_poll():
       door_state = False
       print "door closed"
 
-mb.slave_address = 10
-#intro_init()
-mb.slave_address = 1
+    time.sleep(0.05)
+
+mb.slave_address = 11
+intro_init()
+# mb.slave_address = 1
 # pauk_init()
 
 while(1):
-  mb.slave_address = 1
-  random_flashing(0.01)
+  # mb.slave_address = 1
+  # random_flashing(0.01)
 
   mb.slave_address = 10
-  #intro_poll()
+  intro_poll()
 
 
 '''
