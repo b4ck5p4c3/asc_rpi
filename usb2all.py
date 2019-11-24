@@ -132,6 +132,8 @@ door_state_2 = False
 door_state_3 = False
 pins = [1] * 16
 
+device_pins = [0] * 16
+
 pins[DOOR_KEY] = 0
 
 def pauk_init(mb):
@@ -194,6 +196,7 @@ def intro_poll(mb):
   global door_state_3
   global relay_time
   global light
+  global device_pins
 
   en = safe_reads(mb, READ_EN_BASE, 16)
 
@@ -241,7 +244,9 @@ def intro_poll(mb):
   else:
     safe_writes(mb, RELAY_1, [1])
 
-  safe_writes(mb, WRITE_BASE, pins)
+  if device_pins != pins:
+    safe_writes(mb, WRITE_BASE, pins)
+    device_pins = pins
 
   '''
   if time.time() - relay_time > RELAY_TIMEOUT:
