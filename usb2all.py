@@ -37,9 +37,11 @@ MODE_BASE = 0
 WRITE_BASE = MODE_BASE + GPIO_SIZE
 PULL_BASE = WRITE_BASE + GPIO_SIZE
 
-RELAY_1 = GPIO_SIZE * 3 + 0
-RELAY_2 = GPIO_SIZE * 3 + 1
-RELAY_3 = GPIO_SIZE * 3 + 2
+RELAY_BASE = GPIO_SIZE * 3
+
+RELAY_1 = RELAY_BASE + 0
+RELAY_2 = RELAY_BASE + 1
+RELAY_3 = RELAY_BASE + 2
 
 READ_EN_BASE = 0x100
 READ_DIS_BASE = READ_EN_BASE + GPIO_SIZE
@@ -114,7 +116,10 @@ pin_modes[DOOR_3] = 0
 door_state_1 = False
 door_state_2 = False
 door_state_3 = False
+
 pins = [1] * 16
+
+relays = [0] * 3
 
 pins[DOOR_KEY] = 0
 
@@ -176,6 +181,7 @@ def intro_poll():
   global door_state_1
   global door_state_2
   global door_state_3
+  global relays
   global relay_time
   global light
 
@@ -225,11 +231,12 @@ def intro_poll():
 
     # print "door 1:", door_state_1, "door 2:", door_state_2
     if (not door_state_1) and (not door_state_2):
-      safe_writes(mb, RELAY_1, [0])
+      relays[0] = 0
     else:
-      safe_writes(mb, RELAY_1, [1])
+      relays[0] = 1
 
     safe_writes(mb, WRITE_BASE, pins)
+    safe_writes(mb, RELAY_BASE, relays)
 
     '''
     if time.time() - relay_time > RELAY_TIMEOUT:
