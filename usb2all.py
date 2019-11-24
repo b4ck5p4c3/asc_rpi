@@ -193,11 +193,11 @@ def pauk_init(mb):
   safe_write(mb, 7, 1)
 
 def random_flashing(mb, delay):
-  safe_write(mb, blue, random.getrandbits(1))
+  safe_write(mb, blue, 1 if door_state_1 else 0)
   time.sleep(delay)
-  safe_write(mb, white, random.getrandbits(1))
+  safe_write(mb, white, 1 if door_state_2 else 0)
   time.sleep(delay)
-  safe_write(mb, red, random.getrandbits(1))
+  safe_write(mb, red, 1 if door_state_3 else 0 )
   time.sleep(delay)
   safe_write(mb, green, random.getrandbits(1))
   time.sleep(delay)
@@ -289,8 +289,6 @@ def intro_poll(mb):
     light = 1 - light
   '''
 
-  time.sleep(0.05)
-
 def sensor_poll(mb):
   data = safe_read_registers(mb, REG_INPUT_START, REG_INPUT_SIZE)
 
@@ -311,6 +309,6 @@ intro_init(mb_intro)
 pauk_init(mb_pauk)
 
 while(1):
-  random_flashing(mb_pauk, 0.01)
+  random_flashing(mb_pauk, 0.0)
   intro_poll(mb_intro)
   sensor_poll(mb_sensor)
