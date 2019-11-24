@@ -3,14 +3,8 @@ import serial.tools.list_ports
 import time
 import random
 
-# minimalmodbus.BAUDRATE = 9600
-minimalmodbus.TIMEOUT = 10
-minimalmodbus.PARITY = 'N'
-
 # slave_address = 11
 slave_address = 1
-
-MODBUS_READ_INPUT = 0x4
 
 REG_INPUT_START = 0x300
 REG_INPUT_TEMP_L  = 0
@@ -23,9 +17,11 @@ REG_INPUT_GAS_L   = 6
 REG_INPUT_GAS_H   = 7
 REG_INPUT_SIZE = 8
 
+MODBUS_TIMEOUT = 0.05
+
 mb_intro = minimalmodbus.Instrument('/dev/ttyS0', 11, mode='rtu', debug = False)
 mb_intro.serial.baudrate = 115200
-mb_intro.serial.timeout = 0.5
+mb_intro.serial.timeout = MODBUS_TIMEOUT
 mb_intro.handle_local_echo = True
 
 if not mb_intro.serial.is_open:
@@ -33,7 +29,7 @@ if not mb_intro.serial.is_open:
 
 mb_pauk = minimalmodbus.Instrument('/dev/ttyS0', 1, mode='rtu', debug = False)
 mb_pauk.serial.baudrate = 115200
-mb_pauk.serial.timeout = 0.5
+mb_pauk.serial.timeout = MODBUS_TIMEOUT
 mb_pauk.handle_local_echo = True
 
 if not mb_pauk.serial.is_open:
@@ -41,7 +37,7 @@ if not mb_pauk.serial.is_open:
 
 mb_sensor = minimalmodbus.Instrument('/dev/ttyS0', 10, mode='rtu', debug = False)
 mb_sensor.serial.baudrate = 115200
-mb_sensor.serial.timeout = 0.5
+mb_sensor.serial.timeout = MODBUS_TIMEOUT
 mb_sensor.handle_local_echo = True
 
 if not mb_sensor.serial.is_open:
@@ -95,28 +91,6 @@ def test_inputs(mb):
     
     time.sleep(0.25)
 
-blue = 8
-white = 9
-red = 10
-green = 11
-yellow = 12
-led1 = 14
-led2 = 15
-on  = 1
-off = 0
-
-def random_flashing(mb, delay):
-  mb.write_bit(blue,random.getrandbits(1), functioncode=0x05)
-  time.sleep(delay)
-  mb.write_bit(white,random.getrandbits(1), functioncode=0x05)
-  time.sleep(delay)
-  mb.write_bit(red,random.getrandbits(1), functioncode=0x05)
-  time.sleep(delay)
-  mb.write_bit(green,random.getrandbits(1), functioncode=0x05)
-  time.sleep(delay)
-  mb.write_bit(yellow,random.getrandbits(1), functioncode=0x05)
-  time.sleep(delay)
-
 DOOR_3 = 15
 DOOR_2 = 14
 DOOR_1 = 13
@@ -136,30 +110,36 @@ device_pins = [0] * 16
 
 pins[DOOR_KEY] = 0
 
-def pauk_init(mb):
-  mb.write_bit(0,1, functioncode=0x05)
-  mb.write_bit(1,1, functioncode=0x05)
-  mb.write_bit(2,1, functioncode=0x05)
-  mb.write_bit(3,1, functioncode=0x05)
-  mb.write_bit(4,1, functioncode=0x05)
-  mb.write_bit(5,0, functioncode=0x05)
-  mb.write_bit(6,1, functioncode=0x05)
-  mb.write_bit(7,1, functioncode=0x05)
 
 
-RETRIES = 5
-RETRY_TIMEOUT = 0.05
+RETRIES = 7
+RETRY_TIMEOUT = 0.005
+SAFE_TIMEOUT = 0.005
+
+def safe_write(mb, address, data):
+  for i in xrange(RETRIES):
+    try:
+      if i > 1:
+        print "retry write", i
+      mb.write_bit(address, data, functioncode=0x05)
+      time.sleep(SAFE_TIMEOUT)
+      return
+    except Exception:
+      # print "except"
+      time.sleep(RETRY_TIMEOUT)
+
+  print "modbus TIMEOUT"
 
 def safe_writes(mb, address, data):
   for i in xrange(RETRIES):
     try:
-      if i > 0:
+      if i > 1:
         print "retry write", i
       mb.write_bits(address, data)
-      time.sleep(0.1)
+      time.sleep(SAFE_TIMEOUT)
       return
     except Exception:
-      print "except"
+      # print "except"
       time.sleep(RETRY_TIMEOUT)
 
   print "modbus TIMEOUT"
@@ -167,16 +147,66 @@ def safe_writes(mb, address, data):
 def safe_reads(mb, address, size):
   for i in xrange(RETRIES):
     try:
-      if i > 0:
+      if i > 1:
         print "retry read", i
-      return mb.read_bits(address, size, functioncode=0x02)
-      time.sleep(0.1)
+      return mb.read_bits(address, size)
+      time.sleep(SAFE_TIMEOUT)
     except Exception:
-      print "except"
+      # print "except"
       time.sleep(RETRY_TIMEOUT)
 
   print "modbus TIMEOUT"
 
+def safe_read_registers(mb, address, size):
+  for i in xrange(RETRIES):
+    try:
+      if i > 1:
+        print "retry read", i
+      return mb.read_registers(address, size, functioncode=0x4)
+      time.sleep(SAFE_TIMEOUT)
+    except Exception:
+      # print "except"
+      time.sleep(RETRY_TIMEOUT)
+
+  print "modbus TIMEOUT"
+
+# PAUK
+
+blue = 8
+white = 9
+red = 10
+green = 11
+yellow = 12
+led1 = 14
+led2 = 15
+on  = 1
+off = 0
+
+def pauk_init(mb):
+  safe_write(mb, 0, 1)
+  safe_write(mb, 1, 1)
+  safe_write(mb, 2, 1)
+  safe_write(mb, 3, 1)
+  safe_write(mb, 4, 1)
+  safe_write(mb, 5, 0)
+  safe_write(mb, 6, 1)
+  safe_write(mb, 7, 1)
+
+def random_flashing(mb, delay):
+  safe_write(mb, blue, random.getrandbits(1))
+  time.sleep(delay)
+  safe_write(mb, white, random.getrandbits(1))
+  time.sleep(delay)
+  safe_write(mb, red, random.getrandbits(1))
+  time.sleep(delay)
+  safe_write(mb, green, random.getrandbits(1))
+  time.sleep(delay)
+  safe_write(mb, yellow, random.getrandbits(1))
+  time.sleep(delay)
+  safe_write(mb, yellow, random.getrandbits(1))
+  time.sleep(delay)
+  safe_write(mb, led2, random.getrandbits(1))
+  time.sleep(delay)
 
 def intro_init(mb):
   safe_writes(mb, MODE_BASE, pin_modes)
@@ -262,7 +292,7 @@ def intro_poll(mb):
   time.sleep(0.05)
 
 def sensor_poll(mb):
-  data = mb.read_registers(REG_INPUT_START, REG_INPUT_SIZE, functioncode=MODBUS_READ_INPUT)
+  data = safe_read_registers(mb, REG_INPUT_START, REG_INPUT_SIZE)
 
   raw_temp = (data[REG_INPUT_TEMP_H] << 16) | data[REG_INPUT_TEMP_L]
   raw_humi = (data[REG_INPUT_HUMI_H] << 16) | data[REG_INPUT_HUMI_L]
