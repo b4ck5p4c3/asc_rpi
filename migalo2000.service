@@ -5,6 +5,7 @@ Description=Morgotron
 Type=simple
 ExecStart=/usr/bin/python -u /home/pi/usb2all.py
 User=pi
+Restart=always
 
 [Install]
 WantedBy=multi-user.target
