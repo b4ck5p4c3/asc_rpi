@@ -7,8 +7,8 @@ import random
 minimalmodbus.TIMEOUT = 10
 minimalmodbus.PARITY = 'N'
 
-slave_address = 11
-# slave_address = 1
+# slave_address = 11
+slave_address = 1
 
 MODBUS_READ_INPUT = 0x4
 
@@ -23,13 +23,21 @@ REG_INPUT_GAS_L   = 6
 REG_INPUT_GAS_H   = 7
 REG_INPUT_SIZE = 8
 
-mb = minimalmodbus.Instrument('/dev/ttyS0', slave_address, mode='rtu', debug = False)
-mb.serial.baudrate = 115200
-mb.serial.timeout = 0.5
-mb.handle_local_echo = True
+mb_intro = minimalmodbus.Instrument('/dev/ttyS0', 11, mode='rtu', debug = False)
+mb_intro.serial.baudrate = 115200
+mb_intro.serial.timeout = 0.5
+mb_intro.handle_local_echo = True
 
-if not mb.serial.is_open:
-  mb.serial.open()
+if not mb_intro.serial.is_open:
+  mb_intro.serial.open()
+
+mb_pauk = minimalmodbus.Instrument('/dev/ttyS0', 1, mode='rtu', debug = False)
+mb_pauk.serial.baudrate = 115200
+mb_pauk.serial.timeout = 0.5
+mb_pauk.handle_local_echo = True
+
+if not mb_pauk.serial.is_open:
+  mb_pauk.serial.open()
 
 GPIO_SIZE = 16
 
@@ -47,7 +55,7 @@ READ_DIS_BASE = READ_EN_BASE + GPIO_SIZE
 
 # mb.write_bit(PULL_BASE + 7, 1, functioncode=0x05)
 
-def test_outputs():
+def test_outputs(mb):
   #for pin in xrange(0, 16):
   #  mb.write_bit(MODE_BASE + pin, 1, functioncode=0x05)
   mb.write_bits(MODE_BASE, [1] * 16)
@@ -61,7 +69,7 @@ def test_outputs():
       
     time.sleep(0.25)
 
-def test_inputs():
+def test_inputs(mb):
   for pin in xrange(0, 16):
     mb.write_bit(MODE_BASE + pin, 0, functioncode=0x05)
     mb.write_bit(PULL_BASE + pin, 1, functioncode=0x05)
@@ -89,7 +97,7 @@ led2 = 15
 on  = 1
 off = 0
 
-def random_flashing(delay):
+def random_flashing(mb, delay):
   mb.write_bit(blue,random.getrandbits(1), functioncode=0x05)
   time.sleep(delay)
   mb.write_bit(white,random.getrandbits(1), functioncode=0x05)
@@ -118,7 +126,7 @@ pins = [1] * 16
 
 pins[DOOR_KEY] = 0
 
-def pauk_init():
+def pauk_init(mb):
   mb.write_bit(0,1, functioncode=0x05)
   mb.write_bit(1,1, functioncode=0x05)
   mb.write_bit(2,1, functioncode=0x05)
@@ -160,7 +168,7 @@ def safe_reads(mb, address, size):
   print "modbus TIMEOUT"
 
 
-def intro_init():
+def intro_init(mb):
   safe_writes(mb, MODE_BASE, pin_modes)
   time.sleep(0.1)
   safe_writes(mb, PULL_BASE, [1 - x for x in pin_modes])
@@ -172,123 +180,77 @@ RELAY_TIMEOUT = 5
 
 light = 0
 
-def intro_poll():
+def intro_poll(mb):
   global door_state_1
   global door_state_2
   global door_state_3
   global relay_time
   global light
 
-  for i in xrange(16):
-    if i != DOOR_KEY:
-      pins[i] ^= 1
+  en = safe_reads(mb, READ_EN_BASE, 16)
 
-    en = safe_reads(mb, READ_EN_BASE, 16)
+  # print "door:", en[DOOR_3]
 
-    # print "door:", en[DOOR_3]
+  if en[DOOR_3] and (not door_state_3):
+    door_state_3 = True
+    print "door open"
+  
+  if not en[DOOR_3] and door_state_3:
+    door_state_3 = False
+    print "door closed"
 
-    if en[DOOR_3] and (not door_state_3):
-      door_state_3 = True
-      print "door open"
-    
-    if not en[DOOR_3] and door_state_3:
-      door_state_3 = False
-      print "door closed"
+  if en[DOOR_2] and (not door_state_2):
+    door_state_2 = True
+    print "door open"
+    # safe_writes(mb, RELAY_1, [1])
+    # pins[DOOR_KEY] = 1
+  
+  if not en[DOOR_2] and door_state_2:
+    door_state_2 = False
+    print "door closed"
+    # safe_writes(mb, RELAY_1, [0])
+    # pins[DOOR_KEY] = 0
 
-    if en[DOOR_2] and (not door_state_2):
-      door_state_2 = True
-      print "door open"
-      # safe_writes(mb, RELAY_1, [1])
-      # pins[DOOR_KEY] = 1
-    
-    if not en[DOOR_2] and door_state_2:
-      door_state_2 = False
-      print "door closed"
-      # safe_writes(mb, RELAY_1, [0])
-      # pins[DOOR_KEY] = 0
+  if en[DOOR_1] and (not door_state_1):
+    door_state_1 = True
+    print "door 1 open"
+  
+  if not en[DOOR_1] and door_state_1:
+    door_state_1 = False
+    print "door 1 closed"
 
-    if en[DOOR_1] and (not door_state_1):
-      door_state_1 = True
-      print "door 1 open"
-    
-    if not en[DOOR_1] and door_state_1:
-      door_state_1 = False
-      print "door 1 closed"
-
-    '''
-    if (not door_state_2) and (not door_state_3):
-      safe_writes(mb, RELAY_2, [0])
-    else:
-      safe_writes(mb, RELAY_2, [1])
-    '''
+  '''
+  if (not door_state_2) and (not door_state_3):
+    safe_writes(mb, RELAY_2, [0])
+  else:
+    safe_writes(mb, RELAY_2, [1])
+  '''
 
 
-    # print "door 1:", door_state_1, "door 2:", door_state_2
-    if (not door_state_1) and (not door_state_2):
-      safe_writes(mb, RELAY_1, [0])
-    else:
-      safe_writes(mb, RELAY_1, [1])
+  # print "door 1:", door_state_1, "door 2:", door_state_2
+  if (not door_state_1) and (not door_state_2):
+    safe_writes(mb, RELAY_1, [0])
+  else:
+    safe_writes(mb, RELAY_1, [1])
 
-    safe_writes(mb, WRITE_BASE, pins)
+  safe_writes(mb, WRITE_BASE, pins)
 
-    '''
-    if time.time() - relay_time > RELAY_TIMEOUT:
-      relay_time = time.time()
+  '''
+  if time.time() - relay_time > RELAY_TIMEOUT:
+    relay_time = time.time()
 
-      print "set light", light
+    print "set light", light
 
-      safe_writes(mb, RELAY_2, [light])
+    safe_writes(mb, RELAY_2, [light])
 
-      light = 1 - light
-    '''
+    light = 1 - light
+  '''
 
-    time.sleep(0.05)
+  time.sleep(0.05)
 
-mb.slave_address = 11
-intro_init()
-# mb.slave_address = 1
-# pauk_init()
+intro_init(mb_intro)
+pauk_init(mb_pauk)
 
 while(1):
-  # mb.slave_address = 1
-  # random_flashing(0.01)
-
-  mb.slave_address = 10
-  intro_poll()
-
-
-'''
-# test_inputs()
-# test_outputs()
-
-
-
-
-
-
-
-
-
-
-
-while(1):
-  for i in xrange(16):
-    pins[i] ^= 1
-
-    pin_modes[DOOR_3] = 0
-
-    mb.write_bits(WRITE_BASE, pins)
-
-    # time.sleep(0.01)
-
-    en = mb.read_bits(READ_EN_BASE, 16, functioncode=0x02)
-
-    if en[DOOR_3] and (not door_state_3):
-      door_state_3 = True
-      print "door open"
-    
-    if not en[DOOR_3] and door_state_3:
-      door_state_3 = False
-      print "door closed"
-'''
-
+  random_flashing(mb_pauk, 0.01)
+  intro_poll(mb_intro)
