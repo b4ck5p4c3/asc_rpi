@@ -39,6 +39,14 @@ mb_pauk.handle_local_echo = True
 if not mb_pauk.serial.is_open:
   mb_pauk.serial.open()
 
+mb_sensor = minimalmodbus.Instrument('/dev/ttyS0', 10, mode='rtu', debug = False)
+mb_sensor.serial.baudrate = 115200
+mb_sensor.serial.timeout = 0.5
+mb_sensor.handle_local_echo = True
+
+if not mb_sensor.serial.is_open:
+  mb_sensor.serial.open()
+
 GPIO_SIZE = 16
 
 MODE_BASE = 0
@@ -248,9 +256,26 @@ def intro_poll(mb):
 
   time.sleep(0.05)
 
+def sensor_poll(mb):
+  data = mb.read_registers(REG_INPUT_START, REG_INPUT_SIZE, functioncode=MODBUS_READ_INPUT)
+
+  raw_temp = (data[REG_INPUT_TEMP_H] << 16) | data[REG_INPUT_TEMP_L]
+  raw_humi = (data[REG_INPUT_HUMI_H] << 16) | data[REG_INPUT_HUMI_L]
+  raw_pres = (data[REG_INPUT_PRES_H] << 16) | data[REG_INPUT_PRES_L]
+  raw_gas  = (data[REG_INPUT_GAS_H]  << 16) | data[REG_INPUT_GAS_L]
+
+  temp = raw_temp / 100.0
+  humi = raw_humi / 1000.0
+  pres = raw_pres / 100.0
+  gas = raw_gas
+
+  #print('T: {0}, P: {1}, H: {2}, G: {3}'.format(raw_temp, raw_pres, raw_humi, raw_gas))
+  print('T: {0} degC, P: {1} hPa, H: {2} %%rH, G: {3} ohms'.format(temp, pres, humi, gas))
+
 intro_init(mb_intro)
 pauk_init(mb_pauk)
 
 while(1):
   random_flashing(mb_pauk, 0.01)
   intro_poll(mb_intro)
+  sensor_poll(mb_sensor)
