@@ -311,4 +311,4 @@ pauk_init(mb_pauk)
 while(1):
   random_flashing(mb_pauk, 0.0)
   intro_poll(mb_intro)
-  sensor_poll(mb_sensor)
+  # sensor_poll(mb_sensor)
