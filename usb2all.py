@@ -149,8 +149,8 @@ def safe_reads(mb, address, size):
     try:
       if i > 1:
         print "retry read", i
-      return mb.read_bits(address, size)
       time.sleep(SAFE_TIMEOUT)
+      return mb.read_bits(address, size)
     except Exception:
       # print "except"
       time.sleep(RETRY_TIMEOUT)
@@ -162,8 +162,8 @@ def safe_read_registers(mb, address, size):
     try:
       if i > 1:
         print "retry read", i
-      return mb.read_registers(address, size, functioncode=0x4)
       time.sleep(SAFE_TIMEOUT)
+      return mb.read_registers(address, size, functioncode=0x4)
     except Exception:
       # print "except"
       time.sleep(RETRY_TIMEOUT)
@@ -191,6 +191,11 @@ def pauk_init(mb):
   safe_write(mb, 5, 0)
   safe_write(mb, 6, 1)
   safe_write(mb, 7, 1)
+
+def Get_BTN(mb):
+  btn = mb.read_register(12293, functioncode=0x04)
+  mb.write_bit(22,1, functioncode=0x05)
+  return btn
 
 def random_flashing(mb, delay):
   safe_write(mb, blue, 1 if door_state_1 else 0)
@@ -220,7 +225,11 @@ RELAY_TIMEOUT = 5
 
 light = 0
 
+aux_button = False
+
 def intro_poll(mb):
+  global aux_button
+
   global door_state_1
   global door_state_2
   global door_state_3
@@ -260,12 +269,13 @@ def intro_poll(mb):
     door_state_1 = False
     print "door 1 closed"
 
-  '''
+  pins[DOOR_KEY] = 0
+  # print pins[DOOR_KEY]
+
   if (not door_state_2) and (not door_state_3):
     safe_writes(mb, RELAY_2, [0])
   else:
     safe_writes(mb, RELAY_2, [1])
-  '''
 
 
   # print "door 1:", door_state_1, "door 2:", door_state_2
@@ -305,10 +315,14 @@ def sensor_poll(mb):
   #print('T: {0}, P: {1}, H: {2}, G: {3}'.format(raw_temp, raw_pres, raw_humi, raw_gas))
   print('T: {0} degC, P: {1} hPa, H: {2} %%rH, G: {3} ohms'.format(temp, pres, humi, gas))
 
-intro_init(mb_intro)
-pauk_init(mb_pauk)
+# intro_init(mb_intro)
+# pauk_init(mb_pauk)
 
 while(1):
-  random_flashing(mb_pauk, 0.0)
-  intro_poll(mb_intro)
+  # aux_button = Get_BTN(mb_pauk)
+  # print "btn:", aux_button
+  # random_flashing(mb_pauk, 0.0)
+  # intro_poll(mb_intro)
   # sensor_poll(mb_sensor)
+
+  print safe_reads(mb_intro, 271, 1)
