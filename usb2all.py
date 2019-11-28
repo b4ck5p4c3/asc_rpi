@@ -269,7 +269,9 @@ def intro_poll(mb):
     door_state_1 = False
     print "door 1 closed"
 
-  pins[DOOR_KEY] = 0
+  # print "btn:", aux_button
+
+  pins[DOOR_KEY] = aux_button
   # print pins[DOOR_KEY]
 
   if (not door_state_2) and (not door_state_3):
@@ -286,7 +288,7 @@ def intro_poll(mb):
 
   if device_pins != pins:
     safe_writes(mb, WRITE_BASE, pins)
-    device_pins = pins
+    device_pins = pins[:]
 
   '''
   if time.time() - relay_time > RELAY_TIMEOUT:
