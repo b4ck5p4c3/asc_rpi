@@ -317,7 +317,7 @@ def sensor_poll(mb):
   #print('T: {0}, P: {1}, H: {2}, G: {3}'.format(raw_temp, raw_pres, raw_humi, raw_gas))
   print('T: {0} degC, P: {1} hPa, H: {2} %%rH, G: {3} ohms'.format(temp, pres, humi, gas))
 
-# intro_init(mb_intro)
+intro_init(mb_intro)
 # pauk_init(mb_pauk)
 
 while(1):
@@ -327,4 +327,5 @@ while(1):
   intro_poll(mb_intro)
   # sensor_poll(mb_sensor)
 
-  # print safe_reads(mb_intro, 271, 1)
+  # print safe_reads(mb_intro, READ_EN_BASE + 15, 1)
+  # time.sleep(1)
