@@ -319,10 +319,10 @@ def sensor_poll(mb):
 # pauk_init(mb_pauk)
 
 while(1):
-  # aux_button = Get_BTN(mb_pauk)
+  aux_button = Get_BTN(mb_pauk)
   # print "btn:", aux_button
-  # random_flashing(mb_pauk, 0.0)
-  # intro_poll(mb_intro)
+  random_flashing(mb_pauk, 0.0)
+  intro_poll(mb_intro)
   # sensor_poll(mb_sensor)
 
-  print safe_reads(mb_intro, 271, 1)
+  # print safe_reads(mb_intro, 271, 1)
