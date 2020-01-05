@@ -22,7 +22,7 @@ MODBUS_TIMEOUT = 0.05
 mb_intro = minimalmodbus.Instrument('/dev/ttyS0', 11, mode='rtu', debug = False)
 mb_intro.serial.baudrate = 115200
 mb_intro.serial.timeout = MODBUS_TIMEOUT
-mb_intro.handle_local_echo = True
+# mb_intro.handle_local_echo = True
 
 if not mb_intro.serial.is_open:
   mb_intro.serial.open()
@@ -30,7 +30,7 @@ if not mb_intro.serial.is_open:
 mb_pauk = minimalmodbus.Instrument('/dev/ttyS0', 1, mode='rtu', debug = False)
 mb_pauk.serial.baudrate = 115200
 mb_pauk.serial.timeout = MODBUS_TIMEOUT
-mb_pauk.handle_local_echo = True
+# mb_pauk.handle_local_echo = True
 
 if not mb_pauk.serial.is_open:
   mb_pauk.serial.open()
@@ -38,7 +38,7 @@ if not mb_pauk.serial.is_open:
 mb_sensor = minimalmodbus.Instrument('/dev/ttyS0', 10, mode='rtu', debug = False)
 mb_sensor.serial.baudrate = 115200
 mb_sensor.serial.timeout = MODBUS_TIMEOUT
-mb_sensor.handle_local_echo = True
+# mb_sensor.handle_local_echo = True
 
 if not mb_sensor.serial.is_open:
   mb_sensor.serial.open()
@@ -95,20 +95,26 @@ DOOR_3 = 15
 DOOR_2 = 14
 DOOR_1 = 13
 
+SIGN = 4
+
 DOOR_KEY = 0
 
 pin_modes = [1] * 16
 pin_modes[DOOR_1] = 0
 pin_modes[DOOR_2] = 0
 pin_modes[DOOR_3] = 0
+pin_modes[SIGN] = 1
+
 door_state_1 = False
 door_state_2 = False
 door_state_3 = False
+
 pins = [1] * 16
 
 device_pins = [0] * 16
 
 pins[DOOR_KEY] = 0
+pins[SIGN] = 1
 
 
 
@@ -219,6 +225,8 @@ def intro_init(mb):
   safe_writes(mb, PULL_BASE, [1 - x for x in pin_modes])
 
   safe_writes(mb, RELAY_2, [0])
+
+  safe_writes(mb, RELAY_3, [1])
 
 relay_time = time.time()
 RELAY_TIMEOUT = 5
