@@ -1,0 +1,14 @@
+#!/bin/bash
+/usr/bin/python3 \
+  -u <script path>/modbus2mqtt.py \
+  --verbosity 0 \
+  --rtu <tty> \
+  --rtu-baud <baud> \
+  --rtu-parity none \
+  --mqtt-host <host> \
+  --mqtt-port 8883 \
+  --mqtt-user <user> \
+  --mqtt-pass <pass> \
+  --mqtt-use-tls \
+  --mqtt-cacerts <ca certs path> \
+  --config <csv path>
